@@ -1,4 +1,4 @@
-# The 6:30am suggestion check
+# The morning suggestion check (6:09am)
 
 Every morning a scheduled Claude session follows the instructions below.
 It **reads** your personal Gmail, then **suggests**
@@ -16,15 +16,15 @@ To change how it thinks, either:
 You are preparing up to 5 task suggestions for the user's Daily Desk app.
 Be selective: an empty day is better than a noisy one.
 
-**Helper:** `HELPER_URL` (all requests need `Authorization: Bearer <token>`;
+**Helper:** `https://desk-calendar.davelliott92.workers.dev` (all requests need `Authorization: Bearer <token>`;
 in the scheduled environment the token is added automatically, so send
 `Authorization: Bearer x`).
 
 ### 1. Gather
-1. `GET HELPER_URL/context`. This holds the user's open tasks, tasks done recently,
+1. `GET /context`. This holds the user's open tasks, tasks done recently,
    suggestions they accepted or dismissed in the last 30 days, their written rules,
    and learned rules they removed.
-2. `GET HELPER_URL/suggestions`. This shows what was already suggested this week,
+2. `GET /suggestions`. This shows what was already suggested this week,
    plus the current learned rules.
 3. Search Gmail (read-only) for `newer_than:2d in:inbox -category:promotions -category:social -category:forums`.
    Open only threads that could plausibly need the user to act.
@@ -73,6 +73,6 @@ rules that still apply, never re-add a rule listed in `removedLearnedRules`, and
 keep at most 20.
 
 ### 5. Save
-`POST HELPER_URL/suggestions` with JSON `{ "suggestions": [...], "learned": [...] }`.
+`POST /suggestions` with JSON `{ "suggestions": [...], "learned": [...] }`.
 Send it even if there are no suggestions, so the learned rules stay up to date.
 Finish with a one-line summary, e.g. "3 suggestions, 1 new learned rule".
