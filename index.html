@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en-GB" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Daily Desk</title>
+  <meta name="description" content="A calm daily list, board and habit tracker.">
+  <meta name="theme-color" content="#F5F2EC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Desk">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <main id="view" class="view" tabindex="-1"></main>
+
+  <div class="dock">
+    <form id="capture" class="capture" data-form="capture" autocomplete="off">
+      <div id="capture-preview" class="capture-preview" aria-live="polite"></div>
+      <div class="capture-bar">
+        <label class="sr-only" for="capture-input">Add a task</label>
+        <input id="capture-input" name="q" placeholder="Add anything…  #home !must fri" enterkeyhint="done" autocomplete="off">
+        <button type="submit" class="capture-add" aria-label="Add">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+    </form>
+
+    <nav class="nav" aria-label="Main">
+      <a href="#today" data-view="today">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+        <span>Today</span>
+      </a>
+      <a href="#board" data-view="board">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="4" height="13" rx="1.5"/></svg>
+        <span>Board</span>
+      </a>
+      <a href="#habits" data-view="habits">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="18" cy="6" r="1.5"/><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/><circle cx="6" cy="18" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg>
+        <span>Habits</span>
+      </a>
+      <a href="#settings" data-view="settings">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+  </div>
+
+  <dialog id="sheet" class="sheet" aria-label="Task"></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <noscript>Daily Desk needs JavaScript turned on.</noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
