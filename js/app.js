@@ -111,7 +111,6 @@ function habitChips(habits, date = today()) {
 
 function calendarStrip() {
   if (!S().calendar.url) return '';
-  if (calendar.state === 'loading' && !calendar.events.length) return `<div class="cal"><span class="label">Calendar</span><span class="muted">Checking…</span></div>`;
   if (calendar.state === 'error') return `<button type="button" class="cal cal-fix" data-action="go" data-id="settings">Calendar not checked today — tap to fix</button>`;
   if (calendar.state !== 'ok') return '';
   const events = calendar.events;
@@ -404,7 +403,7 @@ function viewSettings() {
 
   <section class="settings-block">
     <div class="label">Suggestions</div>
-    <p class="muted small">Each morning Claude checks your personal Gmail and calendars and suggests up to 5 tasks. Write rules in plain English — one per line — to steer it.</p>
+    <p class="muted small">Each morning Claude checks your personal Gmail and suggests up to 5 tasks. Write rules in plain English — one per line — to steer it.</p>
     <label class="field"><span class="label">Your rules</span>
       <textarea rows="4" data-change="sugg-rules" placeholder="e.g. Ignore Amazon dispatch emails&#10;Anything from school is at least a Should">${esc(s.suggestionRules)}</textarea></label>
     ${learned.length ? `<div class="label">Learned from what you dismiss</div>
@@ -413,12 +412,12 @@ function viewSettings() {
   </section>
 
   <section class="settings-block">
-    <div class="label">Calendar & suggestions helper</div>
+    <div class="label">Suggestions helper</div>
     <p class="muted small">Your helper's address and password (see worker/README.md).</p>
     <label class="field"><span class="label">Helper address</span><input type="url" value="${esc(s.calendar.url)}" data-change="cal-url" placeholder="https://…workers.dev"></label>
     <label class="field"><span class="label">Helper password</span><input type="password" value="${esc(s.calendar.token)}" data-change="cal-token" autocomplete="off"></label>
-    ${s.calendar.url ? `<button type="button" class="btn" data-action="cal-refresh">Check calendar now</button>
-      <p class="muted small">${calendar.state === 'ok' ? `Last checked ${new Date(calendar.checkedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.` : calendar.state === 'error' ? `Last check failed: ${esc(calendar.error)}` : ''}</p>` : ''}
+    ${s.calendar.url ? `<button type="button" class="btn" data-action="cal-refresh">Check now</button>
+      <p class="muted small">${calendar.state === 'off' ? 'Connected. (No calendars set up — that\'s fine.)' : calendar.state === 'ok' ? `Last checked ${new Date(calendar.checkedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.` : calendar.state === 'error' ? `Last check failed: ${esc(calendar.error)}` : ''}</p>` : ''}
   </section>
 
   <section class="settings-block">
@@ -532,6 +531,12 @@ async function loadCalendar(force = false) {
     const res = await fetch(`${url.replace(/\/$/, '')}/?days=1`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error(res.status === 401 ? 'wrong helper password' : `helper replied ${res.status}`);
     const data = await res.json();
+    if (data.configured === false) {
+      calendar = { state: 'off', date: today(), checkedAt: Date.now(), events: [], errors: [] };
+      try { sessionStorage.setItem(key, JSON.stringify(calendar)); } catch { /* ignore */ }
+      render();
+      return;
+    }
     const day = (data.days || [])[0] || { events: [] };
     calendar = { state: 'ok', date: today(), checkedAt: Date.now(), events: day.events || [], errors: data.errors || [] };
     try { sessionStorage.setItem(key, JSON.stringify(calendar)); } catch { /* ignore */ }

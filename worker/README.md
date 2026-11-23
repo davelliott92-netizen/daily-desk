@@ -1,60 +1,54 @@
-# Calendar & suggestions helper (Cloudflare Worker, free)
+# Suggestions helper (Cloudflare Worker, free)
 
-The app can't read iCloud calendar links directly, because browsers block it.
-This tiny helper fetches your calendars and passes today's events to the app.
-Your calendar links are stored only inside the helper, never in the app's public code.
+The 6:30am Claude check needs a private place to leave its suggestions,
+and your app collects them from there. This helper is that place. It's
+protected by a password (`TOKEN`) that only you, the app and the
+scheduled check know.
 
-## 1. Get your iCloud calendar links
+It can also show your iCloud calendars on Today (optional — see the end).
 
-Do this for **Personal** and **Family**.
-Only the person who *owns* a calendar can do this. If someone else created Family, they'll need to do it for that one.
-
-1. On your iPhone, open **Calendar** → **Calendars** (bottom middle).
-2. Tap the **ⓘ** next to the calendar.
-3. Turn on **Public Calendar** → **Share Link…** → **Copy**.
-4. Paste it somewhere private for a moment, such as a note. It starts with `webcal://`.
-
-*"Public" means anyone with this exact link could view the calendar. Nobody can find it without the link.
-If one ever leaks, turn Public Calendar off and on again to get a new link.
-Your family's normal sharing is unaffected.*
-
-## 2. Create the helper
+## Set it up (about 10 minutes, on your Mac)
 
 1. Sign up free at dash.cloudflare.com.
-2. Go to **Workers & Pages → Create → Create Worker**.
-   - Name it `desk-calendar` and click **Deploy**.
+2. Go to **Workers & Pages → Create → Create Worker**, name it `desk-calendar`, and click **Deploy**.
 3. Click **Edit code**.
-   - Delete what's there and paste in all of `calendar-worker.js`.
+   - Delete what's there.
+   - Paste in all of `calendar-worker.js`.
    - Click **Deploy**.
-4. Go back to the worker → **Settings → Variables and Secrets** and add:
-
-   | Name | Type | Value |
-   |---|---|---|
-   | `TOKEN` | Secret | A long random password. A password manager can generate one. |
-   | `CALENDARS` | Secret | One per line: `Personal=webcal://…` and `Family=webcal://…` |
-   | `ALLOWED_ORIGIN` | Text | `https://YOUR-USERNAME.github.io` |
-
-5. Add storage for the daily suggestions:
+4. Create the storage:
    - Go to **Storage & Databases → KV → Create namespace** and name it `desk`.
-   - Back on the worker, go to **Settings → Bindings → Add → KV namespace**.
-   - Set the variable name to `DESK` (capitals), choose the `desk` namespace, and save or deploy.
+5. Back on the worker, go to **Settings**:
+   - **Bindings → Add → KV namespace**. Set the variable name to `DESK` (capitals) and choose the `desk` namespace.
+   - **Variables and Secrets → Add**:
+
+     | Name | Type | Value |
+     |---|---|---|
+     | `TOKEN` | Secret | A long random password. Let your password manager create and save it. |
+     | `ALLOWED_ORIGIN` | Text | `https://YOUR-USERNAME.github.io` |
+
+   - Click **Deploy** if asked.
 6. Copy the worker's address, e.g. `https://desk-calendar.yourname.workers.dev`.
 
-## 3. Connect the app
+## Connect the app
 
-In the app, go to **Settings → Calendar**:
-- paste the helper address
-- paste the `TOKEN` password
-- tap **Check calendar now**
+In the app, go to **Settings → Suggestions helper**, then:
+1. Paste the address.
+2. Paste the `TOKEN` password.
+3. Tap **Check now**. It should say **Connected**.
 
-Today will now show your events every time you open the app, and collect
-the morning's suggestions from the 6:30am check (see `docs/daily-check.md`).
+## Optional: show your calendars on Today
 
-## What's supported
+Add one more secret, `CALENDARS`, with one iCloud "Public Calendar" link per line,
+e.g. `Personal=webcal://…`.
 
-- Normal events
-- All-day and multi-day events
-- Daily, weekly (including "Mon, Wed, Fri"), monthly-by-date and yearly repeats
-- Skipped and moved occurrences
+To get a link:
+1. On your iPhone, open **Calendar → Calendars**.
+2. Tap **ⓘ** next to the calendar.
+3. Turn on **Public Calendar → Share Link → Copy**.
 
-Not yet supported: rules like "second Tuesday of the month". Those events show on their first date only.
+Anyone with that exact link can view the calendar, so keep it private.
+Turning Public Calendar off and on again creates a new link.
+
+The calendar supports normal, all-day and multi-day events, and daily, weekly,
+monthly-by-date and yearly repeats. It doesn't yet support rules like
+"second Tuesday of the month".

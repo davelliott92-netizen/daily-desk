@@ -1,7 +1,7 @@
 # The 6:30am suggestion check
 
 Every morning a scheduled Claude session follows the instructions below.
-It **reads** your personal Gmail and your calendars, then **suggests**
+It **reads** your personal Gmail, then **suggests**
 tasks in the app's Suggested tray. It never sends, deletes, labels or
 archives email, and it never adds tasks directly — you choose.
 
@@ -26,8 +26,7 @@ in the scheduled environment the token is added automatically, so send
    and learned rules they removed.
 2. `GET HELPER_URL/suggestions`. This shows what was already suggested this week,
    plus the current learned rules.
-3. `GET HELPER_URL/?days=7`. This gives calendar events for the next 7 days.
-4. Search Gmail (read-only) for `newer_than:2d in:inbox -category:promotions -category:social -category:forums`.
+3. Search Gmail (read-only) for `newer_than:2d in:inbox -category:promotions -category:social -category:forums`.
    Open only threads that could plausibly need the user to act.
 
 ### 2. Decide
@@ -47,14 +46,13 @@ A suggestion must pass all three tests:
 2. Is it **not already done**?
 3. Is it **not already on their list**?
 
-Calendar events become suggestions **only** when they need preparation or follow-up,
-e.g. "Dentist Thu 10:00 → bring forms", "Parents' evening → book a slot".
-Never turn an ordinary event into a task.
+If an email is about an upcoming appointment or event, suggest a task **only** when it needs
+preparation or a reply, e.g. "Dentist Thu 10:00 → bring forms".
 
 ### 3. Write each suggestion
 - `title`: short and starting with a verb ("Pay council tax", "Reply to Sarah about Saturday").
 - `reason`: one plain sentence explaining why it's needed, e.g. "Sarah asked you to confirm by Thursday".
-- `source`: e.g. "Email · Sarah Jones, Tue" or "Calendar · Family, Thu".
+- `source`: e.g. "Email · Sarah Jones, Tue".
 - `category`: one of the category ids in the context, or null.
 - `priority`:
   - `must`: blocking or time-sensitive within about 3 days;

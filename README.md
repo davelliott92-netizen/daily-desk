@@ -54,9 +54,9 @@ Step 3 links them.
    - **On the device that already has your tasks**, open the app → **Settings → Sync** and click **Create account** with your email and a password.
    - On your other devices, use **Sign in** with the same email and password.
 
-### Step 4 — Calendar (optional)
+### Step 4 — Suggestions helper (for the daily Gmail check)
 
-See `worker/README.md`. It takes about 10 minutes and shows today's events from your Personal and Family iCloud calendars at the top of Today.
+See `worker/README.md`. It takes about 10 minutes. It can optionally show your iCloud calendars on Today too.
 
 ---
 
@@ -99,7 +99,7 @@ Use **Settings → Export backup** about monthly and save the file to iCloud Dri
 ## Coming next
 
 - **v1.5 — Suggested tasks (built).**
-  - A daily 6:30am check by Claude reads your personal Gmail and both calendars.
+  - A daily 6:30am check by Claude reads your personal Gmail.
   - It writes up to 5 well-reasoned suggestions into the tray at the top of Today.
   - The tray stays hidden until suggestions arrive. The check's instructions are in `docs/daily-check.md`.
   - Steer it with your own rules in **Settings → Suggestions**.

@@ -8,7 +8,8 @@
 //
 // Settings in Cloudflare (Worker → Settings → Variables and Secrets / Bindings):
 //   TOKEN      (secret)  a long random password; also typed into the app's Settings
-//   CALENDARS  (secret)  one calendar per line:  Personal=webcal://p…icloud.com/…
+//   CALENDARS  (secret, optional)  one calendar per line:  Personal=webcal://p…icloud.com/…
+//              Leave it out and the app simply shows no calendar.
 //   ALLOWED_ORIGIN       your app's address, e.g. https://yourname.github.io
 //   TIMEZONE             optional, default Europe/London
 //   DESK       (KV namespace binding) storage for suggestions & context
@@ -103,6 +104,8 @@ async function calendarRoute(url, env, cors) {
         const i = line.indexOf('=');
         return i > 0 ? { name: line.slice(0, i).trim(), url: line.slice(i + 1).trim() } : { name: 'Calendar', url: line };
       });
+
+    if (!feeds.length) return json({ days: [], errors: [], configured: false }, 200, cors);
 
     const errors = [];
     const all = [];
