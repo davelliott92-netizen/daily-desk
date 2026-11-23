@@ -10,12 +10,12 @@ import { startSync } from './sync.js';
 const $ = (sel, el = document) => el.querySelector(sel);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const S = () => store.get().settings;
-const APP_VERSION = '1.5.4';
+const APP_VERSION = '1.6.0';
 
 // ── Per-device view preferences (not synced) ─────────────────
 const UI_KEY = 'dailydesk.ui';
 const ui = Object.assign(
-  { filter: 'all', boardCol: 'next', habitRange: 28, mustsExpanded: false, suggExpanded: false },
+  { filter: 'all', scope: 'today', boardCol: 'next', habitRange: 28, mustsExpanded: false, suggExpanded: false },
   (() => { try { return JSON.parse(localStorage.getItem(UI_KEY)) || {}; } catch { return {}; } })()
 );
 function setUi(patch) {
@@ -160,6 +160,64 @@ function suggestionTray({ collapsed = false } = {}) {
   </section>`;
 }
 
+// ── TIME LISTS (This week · Beyond · All) ────────────────────
+const SCOPES = [['today', 'Today'], ['week', 'This week'], ['beyond', 'Beyond'], ['all', 'All']];
+function scopeTabs() {
+  return `<div class="seg" role="tablist" aria-label="Which tasks" style="--n:${SCOPES.length}">${SCOPES.map(([v, l]) =>
+    `<button type="button" role="tab" class="${ui.scope === v ? 'on' : ''}" aria-selected="${ui.scope === v}" data-action="scope" data-id="${v}">${l}</button>`).join('')}</div>`;
+}
+
+function dayHeading(d) {
+  const n = diffDays(d, today());
+  if (n === 0) return 'Today';
+  if (n === 1) return 'Tomorrow';
+  return parseYmd(d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+}
+const monthHeading = (d) => parseYmd(d).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+function groupBy(list, keyFn) {
+  const out = [];
+  for (const x of list) {
+    const k = keyFn(x);
+    const last = out[out.length - 1];
+    if (last && last.key === k) last.items.push(x); else out.push({ key: k, items: [x] });
+  }
+  return out;
+}
+
+function listSection(title, items, { showDue = true } = {}) {
+  if (!items.length) return '';
+  return `<section class="list" aria-label="${esc(title)}">
+    <div class="section-head group"><span class="label">${esc(title)}</span><span class="count">${items.length}</span></div>
+    ${items.map((x) => taskRow(x, { showDue })).join('')}
+  </section>`;
+}
+
+function listBody(scope) {
+  const t = today();
+  const weekEnd = addDays(t, 6);
+  const open = visibleTasks().filter((x) => x.column !== 'done' && !(x.column === 'ideas' && !x.due && !S().showIdeas));
+  const byDue = (a, b) => (a.due || '').localeCompare(b.due || '') || byPriority(a, b);
+  let html = '';
+  if (scope === 'week') {
+    const list = open.filter((x) => x.due && x.due >= t && x.due <= weekEnd).sort(byDue);
+    html = groupBy(list, (x) => x.due).map((g) => listSection(dayHeading(g.key), g.items, { showDue: false })).join('');
+  } else if (scope === 'beyond') {
+    const list = open.filter((x) => x.due && x.due > weekEnd).sort(byDue);
+    html = groupBy(list, (x) => x.due.slice(0, 7)).map((g) => listSection(monthHeading(g.items[0].due), g.items)).join('');
+  } else {
+    html = [
+      listSection('Carried over', open.filter((x) => x.due && x.due < t).sort(byDue)),
+      listSection('Today', open.filter((x) => x.due === t).sort(byPriority), { showDue: false }),
+      listSection('This week', open.filter((x) => x.due && x.due > t && x.due <= weekEnd).sort(byDue)),
+      listSection('Later', open.filter((x) => x.due && x.due > weekEnd).sort(byDue)),
+      listSection('No date', open.filter((x) => !x.due).sort(byPriority))
+    ].join('');
+  }
+  const empty = { week: 'Nothing due in the next 7 days.', beyond: 'Nothing scheduled beyond this week.', all: 'No open tasks. Enjoy it.' }[scope];
+  return html || `<p class="empty">${empty}</p>`;
+}
+
 // ── TODAY ────────────────────────────────────────────────────
 function viewToday() {
   const s = S();
@@ -174,7 +232,7 @@ function viewToday() {
   const habitsDone = s.habits.filter((h) => store.habitDone(t, h.id)).length;
   const now = new Date();
 
-  return `
+  const head = `
   <header class="head">
     <div>
       <div class="eyebrow">${now.toLocaleDateString('en-GB', { weekday: 'long' })}</div>
@@ -185,6 +243,10 @@ function viewToday() {
       <button type="button" class="btn" data-action="busy-on">Busy</button>
     </div>
   </header>
+  ${scopeTabs()}`;
+  if (ui.scope !== 'today') return head + filterChips() + listBody(ui.scope);
+
+  return `${head}
   ${calendarStrip()}
   ${suggestionTray()}
   ${filterChips()}
@@ -509,7 +571,7 @@ function capturePreview() {
 function addFromCapture(text) {
   const p = parseQuick(text, S().categories);
   if (!p.title) return;
-  const onToday = currentView() === 'today';
+  const onToday = currentView() === 'today' && ui.scope === 'today';
   const column = p.category === 'ideas' ? 'ideas' : 'next';
   if (onToday && !p.due && column !== 'ideas') p.due = today();
   store.addTask({ ...p, column });
@@ -678,6 +740,7 @@ document.addEventListener('click', (e) => {
     case 'carry-today': store.updateTask(id, { due: today() }); break;
     case 'let-go': store.updateTask(id, { due: null }); toast('Kept on the Board, no date'); break;
     case 'board-col': setUi({ boardCol: id }); break;
+    case 'scope': setUi({ scope: id }); window.scrollTo(0, 0); break;
     case 'range': setUi({ habitRange: Number(id) }); break;
     case 'go': location.hash = id; break;
     case 'appearance': store.updateSettings({ appearance: id }); break;
@@ -790,7 +853,7 @@ document.addEventListener('submit', async (e) => {
   if (kind === 'capture') {
     const input = $('#capture-input');
     const q = input.value.trim();
-    if (!q) { openSheet(null, currentView() === 'today' ? { due: today() } : {}); return; }
+    if (!q) { openSheet(null, currentView() === 'today' && ui.scope === 'today' ? { due: today() } : {}); return; }
     addFromCapture(q);
     input.value = '';
     capturePreview();

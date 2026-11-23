@@ -183,6 +183,8 @@ body.has-capture .view { padding-bottom: calc(env(safe-area-inset-bottom) + 170p
 section { display: flex; flex-direction: column; gap: 8px; }
 .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .section-head.line { border-top: 1px solid var(--line); padding-top: 14px; }
+.section-head.group { padding-top: 4px; }
+.view-today .list + .list { margin-top: -6px; }
 .empty { color: var(--muted); font-size: 14px; padding: 10px 0; }
 
 /* ── Habits ───────────────────────────────────────────────── */
