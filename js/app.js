@@ -10,7 +10,7 @@ import { startSync } from './sync.js';
 const $ = (sel, el = document) => el.querySelector(sel);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const S = () => store.get().settings;
-const APP_VERSION = '1.5.3';
+const APP_VERSION = '1.5.4';
 
 // ── Per-device view preferences (not synced) ─────────────────
 const UI_KEY = 'dailydesk.ui';
@@ -558,7 +558,7 @@ let suggState = {};
 const helperBase = () => S().calendar.url.replace(/\/$/, '');
 const helperHeaders = (json) => ({ Authorization: `Bearer ${S().calendar.token}`, ...(json ? { 'Content-Type': 'application/json' } : {}) });
 
-async function loadSuggestions() {
+async function loadSuggestions(announce = false) {
   if (!S().calendar.url) return;
   try {
     const res = await fetch(`${helperBase()}/suggestions`, { headers: helperHeaders() });
@@ -567,9 +567,11 @@ async function loadSuggestions() {
     const removed = new Set(S().learnedRulesRemoved || []);
     learned = (data.learned || []).filter((r) => !removed.has(r));
     suggState = { checkedAt: Date.now() };
-    store.addSuggestions(data.suggestions || []);
+    const added = store.addSuggestions(data.suggestions || []);
+    if (announce) toast(added ? `${added} new suggestion${added > 1 ? 's' : ''} on Today` : 'No new suggestions');
   } catch (e) {
     suggState = { error: e.message || 'could not reach the helper' };
+    if (announce) toast('Could not reach the helper');
   }
   if (currentView() === 'settings') render();
 }
@@ -685,7 +687,7 @@ document.addEventListener('click', (e) => {
       if (!x) break;
       store.addTask({ title: x.title, category: x.category || null, priority: x.priority || null, due: x.due || null, column: x.column || 'next', notes: [x.reason, x.source].filter(Boolean).join(' — ') });
       store.updateSuggestion(id, { status: 'accepted' });
-      toast('Added');
+      toast(x.due === today() ? 'Added to Today' : x.due ? `Added to ${colLabel(x.column || 'next')} · due ${friendly(x.due)}` : `Added to ${colLabel(x.column || 'next')}`);
       break;
     }
     case 'sugg-dismiss': store.updateSuggestion(id, { status: 'dismissed' }); break;
@@ -737,7 +739,7 @@ document.addEventListener('click', (e) => {
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       break;
     }
-    case 'cal-refresh': loadCalendar(true); loadSuggestions(); break;
+    case 'cal-refresh': loadCalendar(true); loadSuggestions(true); break;
     case 'learned-remove': {
       const rule = learned[Number(id)];
       if (rule) { store.updateSettings({ learnedRulesRemoved: [...(s.learnedRulesRemoved || []), rule] }); learned = learned.filter((r) => r !== rule); render(); }

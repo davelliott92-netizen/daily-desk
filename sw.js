@@ -1,6 +1,6 @@
 // Offline support. Bump VERSION whenever you change files so devices
 // pick up the new copy promptly (they also update on their own).
-const VERSION = 'v1.5.3';
+const VERSION = 'v1.5.4';
 const CACHE = `daily-desk-${VERSION}`;
 const SHELL = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
