@@ -1,6 +1,6 @@
 // Offline support. Bump VERSION whenever you change files so devices
 // pick up the new copy promptly (they also update on their own).
-const VERSION = 'v1.5.2';
+const VERSION = 'v1.5.3';
 const CACHE = `daily-desk-${VERSION}`;
 const SHELL = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
@@ -31,7 +31,7 @@ self.addEventListener('fetch', (e) => {
   if (url.origin === self.location.origin) {
     e.respondWith(
       // no-cache: always ask GitHub for the latest copy (it checks quickly if unchanged)
-      fetchWithTimeout(new Request(req, { cache: 'no-cache' }), 4000)
+      fetchWithTimeout(req.mode === 'navigate' ? new Request(req.url, { cache: 'no-cache' }) : new Request(req, { cache: 'no-cache' }), 4000)
         .then((res) => { if (res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone())); return res; })
         .catch(() => caches.match(req, { ignoreSearch: true }).then((hit) => hit || caches.match('./index.html')))
     );

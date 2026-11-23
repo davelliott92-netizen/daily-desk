@@ -10,7 +10,7 @@ import { startSync } from './sync.js';
 const $ = (sel, el = document) => el.querySelector(sel);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const S = () => store.get().settings;
-const APP_VERSION = '1.5.2';
+const APP_VERSION = '1.5.3';
 
 // ── Per-device view preferences (not synced) ─────────────────
 const UI_KEY = 'dailydesk.ui';
