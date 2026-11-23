@@ -10,12 +10,12 @@
 //    These values are not secret; your data is protected by sign-in
 //    and the rules in firestore.rules.
 export const firebaseConfig = {
-  apiKey: '',
-  authDomain: '',
-  projectId: '',
-  storageBucket: '',
-  messagingSenderId: '',
-  appId: ''
+  apiKey: 'AIzaSyB0D0cy7IyKE1oSfErLoUYGdVniNPVFKuk',
+  authDomain: 'daily-desk-77704.firebaseapp.com',
+  projectId: 'daily-desk-77704',
+  storageBucket: 'daily-desk-77704.firebasestorage.app',
+  messagingSenderId: '967385715726',
+  appId: '1:967385715726:web:1d849ec2a54729232a185f'
 };
 
 // 2. BOARD COLUMNS (order matters). The ids are stored on tasks,
