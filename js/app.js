@@ -10,6 +10,7 @@ import { startSync } from './sync.js';
 const $ = (sel, el = document) => el.querySelector(sel);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const S = () => store.get().settings;
+const APP_VERSION = '1.5.2';
 
 // ── Per-device view preferences (not synced) ─────────────────
 const UI_KEY = 'dailydesk.ui';
@@ -427,7 +428,8 @@ function viewSettings() {
       <label class="btn">Import backup<input type="file" accept="application/json,.json" data-change="import" class="sr-only"></label>
     </div>
     <p class="muted small">A monthly export saved to iCloud Drive is a good safety net.</p>
-  </section>`;
+  </section>
+  <p class="muted small version">Daily Desk ${APP_VERSION}</p>`;
 }
 
 // ── EDIT SHEET ───────────────────────────────────────────────
