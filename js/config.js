@@ -63,5 +63,8 @@ export const DEFAULT_SETTINGS = {
   ],
   // Calendar helper (see worker/README.md). Filled in from Settings.
   calendar: { url: '', token: '' },
+  // Plain-English rules for the daily suggestions (edited in Settings)
+  suggestionRules: '',
+  learnedRulesRemoved: [],
   updatedAt: 0
 };

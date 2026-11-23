@@ -98,8 +98,9 @@ Use **Settings → Export backup** about monthly and save the file to iCloud Dri
 
 ## Coming next
 
-- **v1.5 — Suggested tasks.**
+- **v1.5 — Suggested tasks (built).**
   - A daily 6:30am check by Claude reads your personal Gmail and both calendars.
   - It writes up to 5 well-reasoned suggestions into the tray at the top of Today.
-  - The tray is already built in. It stays hidden until suggestions arrive.
+  - The tray stays hidden until suggestions arrive. The check's instructions are in `docs/daily-check.md`.
+  - Steer it with your own rules in **Settings → Suggestions**.
 - **v2 — Project desk.** Free-form cards per project, with zoom and desk colours, for iPad and Mac.

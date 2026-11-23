@@ -1,4 +1,4 @@
-# Calendar helper (Cloudflare Worker, free)
+# Calendar & suggestions helper (Cloudflare Worker, free)
 
 The app can't read iCloud calendar links directly, because browsers block it.
 This tiny helper fetches your calendars and passes today's events to the app.
@@ -34,7 +34,11 @@ Your family's normal sharing is unaffected.*
    | `CALENDARS` | Secret | One per line: `Personal=webcal://…` and `Family=webcal://…` |
    | `ALLOWED_ORIGIN` | Text | `https://YOUR-USERNAME.github.io` |
 
-5. Copy the worker's address, e.g. `https://desk-calendar.yourname.workers.dev`.
+5. Add storage for the daily suggestions:
+   - Go to **Storage & Databases → KV → Create namespace** and name it `desk`.
+   - Back on the worker, go to **Settings → Bindings → Add → KV namespace**.
+   - Set the variable name to `DESK` (capitals), choose the `desk` namespace, and save or deploy.
+6. Copy the worker's address, e.g. `https://desk-calendar.yourname.workers.dev`.
 
 ## 3. Connect the app
 
@@ -43,7 +47,8 @@ In the app, go to **Settings → Calendar**:
 - paste the `TOKEN` password
 - tap **Check calendar now**
 
-Today will now show your events every time you open the app.
+Today will now show your events every time you open the app, and collect
+the morning's suggestions from the 6:30am check (see `docs/daily-check.md`).
 
 ## What's supported
 

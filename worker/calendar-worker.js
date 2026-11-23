@@ -1,24 +1,31 @@
-// Daily Desk — calendar helper (Cloudflare Worker, free plan).
+// Daily Desk — helper (Cloudflare Worker, free plan).
 //
-// Reads your iCloud "Public Calendar" links and returns today's events
-// (or the next few days) as simple JSON for the app. Your calendar links
-// are stored here as secrets, never in the app's code.
+// 1. Reads your iCloud "Public Calendar" links and returns events as JSON.
+// 2. Holds the daily suggestions written by the 6:30am Claude check, plus a
+//    small "context" the app shares (open task titles, accepted/dismissed
+//    suggestions, your rules) so the check avoids duplicates and learns.
+// Your calendar links live here as secrets, never in the app's code.
 //
-// Settings in Cloudflare (Worker → Settings → Variables and Secrets):
+// Settings in Cloudflare (Worker → Settings → Variables and Secrets / Bindings):
 //   TOKEN      (secret)  a long random password; also typed into the app's Settings
 //   CALENDARS  (secret)  one calendar per line:  Personal=webcal://p…icloud.com/…
 //   ALLOWED_ORIGIN       your app's address, e.g. https://yourname.github.io
 //   TIMEZONE             optional, default Europe/London
+//   DESK       (KV namespace binding) storage for suggestions & context
 //
-// Request:  GET /?days=1   with header  Authorization: Bearer <TOKEN>
-// Reply:    { days: [{ date, events: [{ calendar, title, start, end, allDay }] }], errors: [] }
+// Routes (all need header  Authorization: Bearer <TOKEN>):
+//   GET  /?days=1        calendar → { days: [{ date, events }], errors }
+//   GET  /context        what the app last shared
+//   PUT  /context        app shares its context
+//   GET  /suggestions    → { suggestions: [...], learned: [...] }  (last 7 days)
+//   POST /suggestions    the daily check adds { suggestions: [...], learned: [...] }
 
 export default {
   async fetch(request, env) {
     const cors = {
       'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',
-      'Access-Control-Allow-Headers': 'Authorization',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+      'Access-Control-Allow-Methods': 'GET, PUT, POST, OPTIONS',
       'Vary': 'Origin'
     };
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
@@ -26,8 +33,65 @@ export default {
     const auth = request.headers.get('Authorization') || '';
     if (!env.TOKEN || auth !== `Bearer ${env.TOKEN}`) return json({ error: 'unauthorised' }, 401, cors);
 
-    const tz = env.TIMEZONE || 'Europe/London';
     const url = new URL(request.url);
+    const path = url.pathname.replace(/\/+$/, '') || '/';
+
+    if (path === '/context' || path === '/suggestions') {
+      if (!env.DESK) return json({ error: 'storage not set up: add a KV binding called DESK' }, 501, cors);
+      return storage(path, request, env, cors);
+    }
+    if (path === '/' || path === '/calendar') return calendarRoute(url, env, cors);
+    return json({ error: 'not found' }, 404, cors);
+  }
+};
+
+async function storage(path, request, env, cors) {
+  const readJson = async (key, fallback) => {
+    try { return JSON.parse(await env.DESK.get(key)) ?? fallback; } catch { return fallback; }
+  };
+  if (path === '/context') {
+    if (request.method === 'GET') return json(await readJson('context', {}), 200, cors);
+    if (request.method === 'PUT') {
+      const body = await request.text();
+      if (body.length > 200000) return json({ error: 'too large' }, 413, cors);
+      JSON.parse(body); // reject anything that isn't JSON
+      await env.DESK.put('context', body);
+      return json({ ok: true }, 200, cors);
+    }
+  }
+  if (path === '/suggestions') {
+    const store = await readJson('suggestions', { suggestions: [], learned: [] });
+    const cutoff = Date.now() - 7 * 864e5;
+    store.suggestions = (store.suggestions || []).filter((s) => Date.parse(s.createdAt) > cutoff);
+    if (request.method === 'GET') return json(store, 200, cors);
+    if (request.method === 'POST') {
+      const body = await request.json();
+      const now = new Date().toISOString();
+      const have = new Set(store.suggestions.map((s) => s.id));
+      let added = 0;
+      for (const s of (body.suggestions || []).slice(0, 20)) {
+        if (!s || !s.title) continue;
+        const id = String(s.id || `s-${now.slice(0, 10)}-${Math.random().toString(36).slice(2, 8)}`).slice(0, 80);
+        if (have.has(id)) continue;
+        store.suggestions.push({
+          id, createdAt: now,
+          title: String(s.title).slice(0, 200), reason: String(s.reason || '').slice(0, 300), source: String(s.source || '').slice(0, 120),
+          category: s.category || null, priority: ['must', 'should', 'could'].includes(s.priority) ? s.priority : null,
+          due: /^\d{4}-\d{2}-\d{2}$/.test(s.due || '') ? s.due : null, score: Number(s.score) || 0
+        });
+        have.add(id);
+        added++;
+      }
+      if (Array.isArray(body.learned)) store.learned = body.learned.map(String).slice(0, 40);
+      await env.DESK.put('suggestions', JSON.stringify(store));
+      return json({ ok: true, added }, 200, cors);
+    }
+  }
+  return json({ error: 'method not allowed' }, 405, cors);
+}
+
+async function calendarRoute(url, env, cors) {
+    const tz = env.TIMEZONE || 'Europe/London';
     const days = Math.min(14, Math.max(1, parseInt(url.searchParams.get('days') || '1', 10) || 1));
     const start = localDate(new Date(), tz);
     const dates = Array.from({ length: days }, (_, i) => addDays(start, i));
@@ -60,8 +124,7 @@ export default {
         .map(({ date: _d, ...rest }) => rest)
     }));
     return json({ days: out, errors, checkedAt: new Date().toISOString() }, 200, cors);
-  }
-};
+}
 
 const json = (data, status, headers) =>
   new Response(JSON.stringify(data), { status, headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });

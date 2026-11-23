@@ -403,8 +403,18 @@ function viewSettings() {
   </section>
 
   <section class="settings-block">
-    <div class="label">Calendar</div>
-    <p class="muted small">Your calendar helper's address and password (see worker/README.md).</p>
+    <div class="label">Suggestions</div>
+    <p class="muted small">Each morning Claude checks your personal Gmail and calendars and suggests up to 5 tasks. Write rules in plain English — one per line — to steer it.</p>
+    <label class="field"><span class="label">Your rules</span>
+      <textarea rows="4" data-change="sugg-rules" placeholder="e.g. Ignore Amazon dispatch emails&#10;Anything from school is at least a Should">${esc(s.suggestionRules)}</textarea></label>
+    ${learned.length ? `<div class="label">Learned from what you dismiss</div>
+      <div class="edit-list">${learned.map((r, i) => `<div class="edit-row"><span class="grow learned">${esc(r)}</span><button type="button" class="icon-btn small" data-action="learned-remove" data-id="${i}" aria-label="Forget this rule">${ICON.x}</button></div>`).join('')}</div>` : ''}
+    <p class="muted small">${suggState.error ? `Last fetch failed: ${esc(suggState.error)}` : suggState.checkedAt ? `Last collected ${new Date(suggState.checkedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.` : 'Needs the helper below.'}</p>
+  </section>
+
+  <section class="settings-block">
+    <div class="label">Calendar & suggestions helper</div>
+    <p class="muted small">Your helper's address and password (see worker/README.md).</p>
     <label class="field"><span class="label">Helper address</span><input type="url" value="${esc(s.calendar.url)}" data-change="cal-url" placeholder="https://…workers.dev"></label>
     <label class="field"><span class="label">Helper password</span><input type="password" value="${esc(s.calendar.token)}" data-change="cal-token" autocomplete="off"></label>
     ${s.calendar.url ? `<button type="button" class="btn" data-action="cal-refresh">Check calendar now</button>
@@ -529,6 +539,65 @@ async function loadCalendar(force = false) {
     calendar = { state: 'error', events: [], errors: [], error: e.message || 'could not reach the helper' };
   }
   render();
+}
+
+// ── Suggestions (via the helper) ─────────────────────────────
+// The 6:30am Claude check posts suggestions to the helper; the app
+// collects them here. The app also shares a small "context" (open task
+// titles, what you accepted/dismissed, your rules) so the check can
+// avoid duplicates and learn what you don't want.
+let learned = [];
+let suggState = {};
+const helperBase = () => S().calendar.url.replace(/\/$/, '');
+const helperHeaders = (json) => ({ Authorization: `Bearer ${S().calendar.token}`, ...(json ? { 'Content-Type': 'application/json' } : {}) });
+
+async function loadSuggestions() {
+  if (!S().calendar.url) return;
+  try {
+    const res = await fetch(`${helperBase()}/suggestions`, { headers: helperHeaders() });
+    if (!res.ok) throw new Error(res.status === 401 ? 'wrong helper password' : `helper replied ${res.status}`);
+    const data = await res.json();
+    const removed = new Set(S().learnedRulesRemoved || []);
+    learned = (data.learned || []).filter((r) => !removed.has(r));
+    suggState = { checkedAt: Date.now() };
+    store.addSuggestions(data.suggestions || []);
+  } catch (e) {
+    suggState = { error: e.message || 'could not reach the helper' };
+  }
+  if (currentView() === 'settings') render();
+}
+
+function buildContext() {
+  const st = store.get();
+  const tasks = Object.values(st.tasks).filter((t) => !t.deleted);
+  const cutoff = Date.now() - 30 * 864e5;
+  const sugg = Object.values(st.suggestions).filter((x) => x.status && (x.updatedAt || 0) > cutoff);
+  return {
+    updatedAt: new Date().toISOString(),
+    categories: S().categories.map((c) => ({ id: c.id, name: c.name })),
+    openTasks: tasks.filter((t) => t.column !== 'done').slice(-150).map((t) => ({ title: t.title, category: t.category, due: t.due, priority: t.priority })),
+    recentlyDone: tasks.filter((t) => t.column === 'done' && (t.doneAt || 0) > Date.now() - 14 * 864e5).map((t) => t.title),
+    accepted: sugg.filter((x) => x.status === 'accepted').map((x) => ({ title: x.title, source: x.source, reason: x.reason })),
+    dismissed: sugg.filter((x) => x.status === 'dismissed').map((x) => ({ title: x.title, source: x.source, reason: x.reason })),
+    rules: S().suggestionRules || '',
+    removedLearnedRules: S().learnedRulesRemoved || []
+  };
+}
+
+let contextTimer = null;
+let lastContext = '';
+function scheduleContextPush() {
+  if (!S().calendar.url) return;
+  clearTimeout(contextTimer);
+  contextTimer = setTimeout(async () => {
+    const body = JSON.stringify(buildContext());
+    const sig = body.replace(/"updatedAt":"[^"]*",/, '');
+    if (sig === lastContext) return;
+    try {
+      const res = await fetch(`${helperBase()}/context`, { method: 'PUT', headers: helperHeaders(true), body });
+      if (res.ok) lastContext = sig;
+    } catch { /* try again on the next change */ }
+  }, 4000);
 }
 
 // ── Theme ────────────────────────────────────────────────────
@@ -661,7 +730,12 @@ document.addEventListener('click', (e) => {
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       break;
     }
-    case 'cal-refresh': loadCalendar(true); break;
+    case 'cal-refresh': loadCalendar(true); loadSuggestions(); break;
+    case 'learned-remove': {
+      const rule = learned[Number(id)];
+      if (rule) { store.updateSettings({ learnedRulesRemoved: [...(s.learnedRulesRemoved || []), rule] }); learned = learned.filter((r) => r !== rule); render(); }
+      break;
+    }
     case 'sign-out': syncApi?.signOut(); break;
     case 'sheet-close': $('#sheet').close(); break;
     case 'sheet-delete': {
@@ -687,7 +761,8 @@ document.addEventListener('change', async (e) => {
     case 'habit-cap': store.updateSettings({ habitCap: Math.min(12, Math.max(1, Number(el.value) || 6)) }); break;
     case 'cat-name': if (el.value.trim()) store.updateSettings({ categories: s.categories.map((c, j) => (j === i ? { ...c, name: el.value.trim() } : c)) }); break;
     case 'cal-url': store.updateSettings({ calendar: { ...s.calendar, url: el.value.trim() } }); loadCalendar(true); break;
-    case 'cal-token': store.updateSettings({ calendar: { ...s.calendar, token: el.value.trim() } }); loadCalendar(true); break;
+    case 'cal-token': store.updateSettings({ calendar: { ...s.calendar, token: el.value.trim() } }); loadCalendar(true); loadSuggestions(); break;
+    case 'sugg-rules': store.updateSettings({ suggestionRules: el.value }); break;
     case 'import': {
       const file = el.files?.[0];
       if (!file) break;
@@ -778,14 +853,17 @@ document.addEventListener('visibilitychange', () => {
   if (today() !== lastDay) { lastDay = today(); ui.mustsExpanded = false; }
   render();
   loadCalendar();
+  loadSuggestions();
 });
 setInterval(() => { if (today() !== lastDay) { lastDay = today(); render(); loadCalendar(true); } }, 60 * 1000);
 
 // ── Start ────────────────────────────────────────────────────
 store.init();
-store.subscribe(() => render());
+store.subscribe(() => { render(); scheduleContextPush(); });
 render();
 loadCalendar();
+loadSuggestions();
+scheduleContextPush();
 startSync(firebaseConfig, (st) => { syncStatus = st; if (currentView() === 'settings') render(); })
   .then((api) => { syncApi = api; });
 

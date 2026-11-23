@@ -127,6 +127,26 @@ export function toggleHabit(date, habitId) {
 export const habitDone = (date, habitId) => state.habitLog[date]?.[habitId] === true;
 
 // ── Suggestions (from the daily Claude check) ────────────────
+// Adds suggestions collected from the helper. Ones already seen
+// (accepted, dismissed or waiting) are left alone.
+export function addSuggestions(list) {
+  let added = 0;
+  for (const s of list) {
+    if (!s || !s.id || !s.title || state.suggestions[s.id]) continue;
+    const now = Date.now();
+    state.suggestions[s.id] = {
+      id: String(s.id), title: String(s.title), reason: s.reason || '', source: s.source || '',
+      category: s.category || null, priority: s.priority || null, due: s.due || null,
+      column: s.column || 'next', score: Number(s.score) || 0,
+      createdAt: Date.parse(s.createdAt) || now, status: null, deleted: false, updatedAt: now
+    };
+    touch('suggestion', s.id);
+    added++;
+  }
+  if (added) emit();
+  return added;
+}
+
 export function updateSuggestion(id, patch) {
   const s = state.suggestions[id];
   if (!s) return;

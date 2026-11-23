@@ -302,6 +302,7 @@ section { display: flex; flex-direction: column; gap: 8px; }
 .edit-row { display: flex; align-items: center; gap: 4px; padding: 4px 6px; border-bottom: 1px solid var(--line-soft); }
 .edit-row:last-child { border-bottom: 0; }
 .edit-row input { flex: 1 1 auto; min-width: 0; border: 0; background: transparent; height: 40px; font-size: 16px; outline: none; }
+.learned { font-size: 14px; padding: 8px 6px; }
 .swatch-btn { width: 36px; height: 36px; border: 0; background: none; display: grid; place-items: center; }
 .swatch-btn .dot { width: 14px; height: 14px; }
 .sync-ok { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--navy-tint); color: var(--navy); }
